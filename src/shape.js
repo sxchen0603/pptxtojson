@@ -46,143 +46,178 @@ export function getCustomShapePath(custShapType, w, h) {
   let moveToNode = getTextByPathList(pathNodes, ['a:moveTo'])
 
   let lnToNodes = pathNodes['a:lnTo']
+  let quadBezToNodes = pathNodes['a:quadBezTo']
   let cubicBezToNodes = pathNodes['a:cubicBezTo']
   const arcToNodes = pathNodes['a:arcTo']
   let closeNode = getTextByPathList(pathNodes, ['a:close'])
   if (!Array.isArray(moveToNode)) moveToNode = [moveToNode]
 
   const multiSapeAry = []
-  if (moveToNode.length > 0) {
-    Object.keys(moveToNode).forEach(key => {
-      const moveToPtNode = moveToNode[key]['a:pt']
+  
+  // 处理 moveTo
+  if (moveToNode && moveToNode.length > 0) {
+    moveToNode.forEach((node) => {
+      const moveToPtNode = node['a:pt']
       if (moveToPtNode) {
-        Object.keys(moveToPtNode).forEach(key => {
-          const moveToNoPt = moveToPtNode[key]
-          const spX = moveToNoPt['attrs', 'x']
-          const spY = moveToNoPt['attrs', 'y']
-          const order = moveToNoPt['attrs', 'order']
-          multiSapeAry.push({
-            type: 'movto',
-            x: spX,
-            y: spY,
-            order,
-          })
+        const pts = Array.isArray(moveToPtNode) ? moveToPtNode : [moveToPtNode]
+        pts.forEach((pt) => {
+          const spX = pt?.attrs?.x
+          const spY = pt?.attrs?.y
+          const order = pt?.attrs?.order ?? node?.attrs?.order
+          if (spX !== undefined && spY !== undefined) {
+            multiSapeAry.push({
+              type: 'movto',
+              x: spX,
+              y: spY,
+              order,
+            })
+          }
         })
       }
     })
-    if (lnToNodes) {
-      if (!Array.isArray(lnToNodes)) lnToNodes = [lnToNodes]
-      Object.keys(lnToNodes).forEach(key => {
-        const lnToPtNode = lnToNodes[key]['a:pt']
-        if (lnToPtNode) {
-          Object.keys(lnToPtNode).forEach(key => {
-            const lnToNoPt = lnToPtNode[key]
-            const ptX = lnToNoPt['attrs', 'x']
-            const ptY = lnToNoPt['attrs', 'y']
-            const order = lnToNoPt['attrs', 'order']
+  }
+  // 处理 lnTo
+  if (lnToNodes) {
+    if (!Array.isArray(lnToNodes)) lnToNodes = [lnToNodes]
+    lnToNodes.forEach((node) => {
+      const lnToPtNode = node['a:pt']
+      if (lnToPtNode) {
+        const pts = Array.isArray(lnToPtNode) ? lnToPtNode : [lnToPtNode]
+        pts.forEach((pt) => {
+          const ptX = pt?.attrs?.x
+          const ptY = pt?.attrs?.y
+          const order = pt?.attrs?.order ?? node?.attrs?.order
+          if (ptX !== undefined && ptY !== undefined) {
             multiSapeAry.push({
               type: 'lnto',
               x: ptX,
               y: ptY,
               order,
             })
-          })
-        }
-      })
-    }
-    if (cubicBezToNodes) {
-      const cubicBezToPtNodesAry = []
-      if (!Array.isArray(cubicBezToNodes)) cubicBezToNodes = [cubicBezToNodes]
-      Object.keys(cubicBezToNodes).forEach(key => {
-        cubicBezToPtNodesAry.push(cubicBezToNodes[key]['a:pt'])
-      })
-
-      cubicBezToPtNodesAry.forEach(key => {
-        const pts_ary = []
-        key.forEach(pt => {
-          const pt_obj = {
-            x: pt['attrs']['x'],
-            y: pt['attrs']['y'],
           }
-          pts_ary.push(pt_obj)
         })
-        const order = key[0]['attrs']['order']
+      }
+    })
+  }
+  // 处理 quadBezTo
+  if (quadBezToNodes) {
+    if (!Array.isArray(quadBezToNodes)) quadBezToNodes = [quadBezToNodes]
+    quadBezToNodes.forEach(node => {
+      let pts = node['a:pt']
+      if (!pts) return
+      if (!Array.isArray(pts)) pts = [pts]
+      if (pts.length >= 2) {
+        const order = pts[0]?.attrs?.order
         multiSapeAry.push({
-          type: 'cubicBezTo',
-          cubBzPt: pts_ary,
+          type: 'quadBezTo',
+          quadPt: pts.map(pt => ({ x: pt?.attrs?.x, y: pt?.attrs?.y })),
           order,
         })
-      })
-    }
-    if (arcToNodes) {
-      const arcToNodesAttrs = arcToNodes['attrs']
-      const order = arcToNodesAttrs['order']
-      const hR = arcToNodesAttrs['hR']
-      const wR = arcToNodesAttrs['wR']
-      const stAng = arcToNodesAttrs['stAng']
-      const swAng = arcToNodesAttrs['swAng']
-      let shftX = 0
-      let shftY = 0
-      const arcToPtNode = getTextByPathList(arcToNodes, ['a:pt', 'attrs'])
-      if (arcToPtNode) {
-        shftX = arcToPtNode['x']
-        shftY = arcToPtNode['y']
       }
+    })
+  }
+  if (cubicBezToNodes) {
+    const cubicBezToPtNodesAry = []
+    if (!Array.isArray(cubicBezToNodes)) cubicBezToNodes = [cubicBezToNodes]
+    Object.keys(cubicBezToNodes).forEach(key => {
+      cubicBezToPtNodesAry.push(cubicBezToNodes[key]['a:pt'])
+    })
+
+    cubicBezToPtNodesAry.forEach(key => {
+      const pts_ary = []
+      key.forEach(pt => {
+        const pt_obj = {
+          x: pt['attrs']['x'],
+          y: pt['attrs']['y'],
+        }
+        pts_ary.push(pt_obj)
+      })
+      const order = key[0]['attrs']['order']
       multiSapeAry.push({
-        type: 'arcTo',
-        hR: hR,
-        wR: wR,
-        stAng: stAng,
-        swAng: swAng,
-        shftX: shftX,
-        shftY: shftY,
+        type: 'cubicBezTo',
+        cubBzPt: pts_ary,
         order,
       })
+    })
+  }
+  if (arcToNodes) {
+    const arcToNodesAttrs = arcToNodes['attrs']
+    const order = arcToNodesAttrs['order']
+    const hR = arcToNodesAttrs['hR']
+    const wR = arcToNodesAttrs['wR']
+    const stAng = arcToNodesAttrs['stAng']
+    const swAng = arcToNodesAttrs['swAng']
+    let shftX = 0
+    let shftY = 0
+    const arcToPtNode = getTextByPathList(arcToNodes, ['a:pt', 'attrs'])
+    if (arcToPtNode) {
+      shftX = arcToPtNode['x']
+      shftY = arcToPtNode['y']
     }
-    if (closeNode) {
-      if (!Array.isArray(closeNode)) closeNode = [closeNode]
-      Object.keys(closeNode).forEach(() => {
-        multiSapeAry.push({
-          type: 'close',
-          order: Infinity,
-        })
+    multiSapeAry.push({
+      type: 'arcTo',
+      hR: hR,
+      wR: wR,
+      stAng: stAng,
+      swAng: swAng,
+      shftX: shftX,
+      shftY: shftY,
+      order,
+    })
+  }
+  if (closeNode) {
+    if (!Array.isArray(closeNode)) closeNode = [closeNode]
+    Object.keys(closeNode).forEach(() => {
+      multiSapeAry.push({
+        type: 'close',
+        order: Infinity,
       })
-    }
+    })
+  }
 
-    multiSapeAry.sort((a, b) => a.order - b.order)
+  multiSapeAry.sort((a, b) => a.order - b.order)
 
-    let k = 0
-    while (k < multiSapeAry.length) {
-      if (multiSapeAry[k].type === 'movto') {
-        const spX = parseInt(multiSapeAry[k].x) * cX
-        const spY = parseInt(multiSapeAry[k].y) * cY
-        d += ' M' + spX + ',' + spY
-      } 
-      else if (multiSapeAry[k].type === 'lnto') {
-        const Lx = parseInt(multiSapeAry[k].x) * cX
-        const Ly = parseInt(multiSapeAry[k].y) * cY
-        d += ' L' + Lx + ',' + Ly
-      } 
-      else if (multiSapeAry[k].type === 'cubicBezTo') {
-        const Cx1 = parseInt(multiSapeAry[k].cubBzPt[0].x) * cX
-        const Cy1 = parseInt(multiSapeAry[k].cubBzPt[0].y) * cY
-        const Cx2 = parseInt(multiSapeAry[k].cubBzPt[1].x) * cX
-        const Cy2 = parseInt(multiSapeAry[k].cubBzPt[1].y) * cY
-        const Cx3 = parseInt(multiSapeAry[k].cubBzPt[2].x) * cX
-        const Cy3 = parseInt(multiSapeAry[k].cubBzPt[2].y) * cY
-        d += ' C' + Cx1 + ',' + Cy1 + ' ' + Cx2 + ',' + Cy2 + ' ' + Cx3 + ',' + Cy3
-      } 
-      else if (multiSapeAry[k].type === 'arcTo') {
-        const hR = parseInt(multiSapeAry[k].hR) * cX
-        const wR = parseInt(multiSapeAry[k].wR) * cY
-        const stAng = parseInt(multiSapeAry[k].stAng) / 60000
-        const swAng = parseInt(multiSapeAry[k].swAng) / 60000
-        const endAng = stAng + swAng
-        d += shapeArc(wR, hR, wR, hR, stAng, endAng, false)
+  let k = 0
+  while (k < multiSapeAry.length) {
+    if (multiSapeAry[k].type === 'movto') {
+      const spX = parseInt(multiSapeAry[k].x) * cX
+      const spY = parseInt(multiSapeAry[k].y) * cY
+      d += ' M' + spX + ',' + spY
+    } 
+    else if (multiSapeAry[k].type === 'lnto') {
+      const Lx = parseInt(multiSapeAry[k].x) * cX
+      const Ly = parseInt(multiSapeAry[k].y) * cY
+      d += ' L' + Lx + ',' + Ly
+    } 
+    else if (multiSapeAry[k].type === 'quadBezTo') {
+      const pts = multiSapeAry[k].quadPt
+      if (pts && pts.length >= 2) {
+        const cpX = parseInt(pts[0].x) * cX
+        const cpY = parseInt(pts[0].y) * cY
+        const endX = parseInt(pts[1].x) * cX
+        const endY = parseInt(pts[1].y) * cY
+        d += ' Q' + cpX + ',' + cpY + ' ' + endX + ',' + endY
       }
-      else if (multiSapeAry[k].type === 'close') d += 'z'
-      k++
     }
+    else if (multiSapeAry[k].type === 'cubicBezTo') {
+      const Cx1 = parseInt(multiSapeAry[k].cubBzPt[0].x) * cX
+      const Cy1 = parseInt(multiSapeAry[k].cubBzPt[0].y) * cY
+      const Cx2 = parseInt(multiSapeAry[k].cubBzPt[1].x) * cX
+      const Cy2 = parseInt(multiSapeAry[k].cubBzPt[1].y) * cY
+      const Cx3 = parseInt(multiSapeAry[k].cubBzPt[2].x) * cX
+      const Cy3 = parseInt(multiSapeAry[k].cubBzPt[2].y) * cY
+      d += ' C' + Cx1 + ',' + Cy1 + ' ' + Cx2 + ',' + Cy2 + ' ' + Cx3 + ',' + Cy3
+    } 
+    else if (multiSapeAry[k].type === 'arcTo') {
+      const hR = parseInt(multiSapeAry[k].hR) * cX
+      const wR = parseInt(multiSapeAry[k].wR) * cY
+      const stAng = parseInt(multiSapeAry[k].stAng) / 60000
+      const swAng = parseInt(multiSapeAry[k].swAng) / 60000
+      const endAng = stAng + swAng
+      d += shapeArc(wR, hR, wR, hR, stAng, endAng, false)
+    }
+    else if (multiSapeAry[k].type === 'close') d += 'z'
+    k++
   }
 
   return d
